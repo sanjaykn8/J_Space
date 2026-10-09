@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J-Space Console — Live (local model)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6fb;
+  --panel:#ffffff;
+  --panel-2:#fbfcfe;
+  --border:rgba(16,23,42,0.10);
+  --border-strong:rgba(16,23,42,0.22);
+  --text:#10172a;
+  --muted:#5b6478;
+  --muted-2:#909ab0;
+  --blue:#2f6fed;
+  --violet:#7c5cff;
+  --red:#e0294b;
+  --teal:#0891b2;
+  --task:#3d5a80;
+  --font-display:'Space Grotesk', system-ui, sans-serif;
+  --font-body:'Inter', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', Consolas, monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0; background:var(--bg); color:var(--text); font-family:var(--font-body); line-height:1.5;}
+.wrap{max-width:1420px; margin:0 auto; padding:0 20px;}
+.mono{font-family:var(--font-mono);}
+.scrollx{overflow-x:auto;}
+a{color:var(--blue);}
+
+.tag{display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:10.5px; padding:3px 8px; border-radius:3px; border:1px solid var(--border-strong); color:var(--muted); white-space:nowrap;}
+.tag-live{color:#0b7a3f; border-color:rgba(16,163,74,0.4); background:rgba(16,163,74,0.08);}
+.tag-approx{color:#9a6b00; border-color:rgba(217,150,0,0.4); background:rgba(217,150,0,0.08);}
+.tag-off{color:var(--muted); background:rgba(16,23,42,0.04);}
+
+.topbar{position:sticky; top:0; z-index:40; background:rgba(255,255,255,0.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--border);}
+.topbar-inner{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 20px; flex-wrap:wrap;}
+.brand h1{font-family:var(--font-display); font-weight:700; font-size:19px; margin:0; letter-spacing:0.01em;}
+.brand .sub{font-family:var(--font-mono); font-size:11px; color:var(--muted);}
+.model-stats{display:flex; gap:16px; font-family:var(--font-mono); font-size:11px; color:var(--muted); flex-wrap:wrap;}
+.model-stats b{color:var(--text); font-weight:600;}
+
+#errorBanner{display:none; background:#fdecee; border-bottom:1px solid rgba(224,41,75,0.35); color:#9d1030; font-family:var(--font-mono); font-size:12px; padding:9px 20px;}
+#errorBanner button{margin-left:12px; background:none; border:1px solid rgba(224,41,75,0.4); color:#9d1030; border-radius:3px; padding:2px 8px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+
+main{padding:24px 0 60px;}
+.section{margin:0 0 26px;}
+.section-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap;}
+.section-head h2{font-family:var(--font-display); font-size:15px; font-weight:600; margin:0; display:flex; gap:10px; align-items:center;}
+.section-desc{font-size:12.5px; color:var(--muted); max-width:680px; margin:4px 0 0;}
+
+.panel{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; box-shadow:0 1px 2px rgba(16,23,42,0.04);}
+.panel-title{font-family:var(--font-mono); font-size:11px; letter-spacing:0.05em; color:var(--muted); display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+
+label.field-label{display:block; font-family:var(--font-mono); font-size:10.5px; color:var(--muted); margin-bottom:5px; letter-spacing:0.03em;}
+input[type=text], textarea, select{
+  width:100%; font-family:var(--font-mono); font-size:12.5px; color:var(--text);
+  background:var(--panel-2); border:1px solid var(--border-strong); border-radius:5px; padding:8px 10px;
+}
+textarea{resize:vertical; min-height:52px;}
+.field-row{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;}
+.field-row > div{flex:1; min-width:140px;}
+
+button.btn{font-family:var(--font-mono); font-size:11.5px; background:var(--panel-2); color:var(--text); border:1px solid var(--border-strong); border-radius:5px; padding:8px 14px; cursor:pointer;}
+button.btn:hover{border-color:var(--blue); background:#eef3ff;}
+button.btn.primary{background:var(--blue); color:#fff; border-color:var(--blue);}
+button.btn.primary:hover{background:#2359c9;}
+button.btn:disabled{opacity:0.45; cursor:not-allowed;}
+button.btn:disabled:hover{background:var(--panel-2); border-color:var(--border-strong);}
+
+.status-line{font-family:var(--font-mono); font-size:11.5px; color:var(--muted); margin-top:8px;}
+.status-line.ok{color:#0b7a3f;}
+.status-line.err{color:#9d1030;}
+
+input[type=range]{width:150px; height:3px; background:var(--border-strong); border-radius:2px; -webkit-appearance:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--blue); cursor:pointer; border:2px solid #fff; box-shadow:0 0 0 1px var(--blue);}
+
+.controls{position:sticky; top:53px; z-index:35; background:rgba(255,255,255,0.94); backdrop-filter:blur(8px); border-bottom:1px solid var(--border);}
+.controls-inner{display:flex; align-items:center; gap:22px; padding:9px 20px; flex-wrap:wrap;}
+.ctrl-group{display:flex; align-items:center; gap:9px;}
+.ctrl-label{font-family:var(--font-mono); font-size:10.5px; color:var(--muted-2); letter-spacing:0.03em; white-space:nowrap;}
+.ctrl-value{font-family:var(--font-mono); font-size:12px; color:var(--blue);}
+
+.hero-grid{display:grid; grid-template-columns:300px 1fr 320px; gap:16px; align-items:stretch;}
+@media (max-width:1180px){ .hero-grid{grid-template-columns:1fr;} }
+
+.token-row{display:flex; flex-wrap:wrap; gap:4px; margin-bottom:12px;}
+.token-cell{font-family:var(--font-mono); font-size:11px; padding:4px 7px; border:1px solid var(--border-strong); border-radius:4px; background:var(--panel-2); color:var(--muted); cursor:pointer;}
+.token-cell:hover{border-color:var(--blue); color:var(--text);}
+.token-cell.selected{background:#eaf1ff; border-color:var(--blue); color:var(--blue); font-weight:600;}
+
+.jspace-canvas-wrap{position:relative; border:1px solid var(--border); border-radius:6px; background:linear-gradient(180deg,#fbfcff,#f3f6fc); height:360px; cursor:grab; overflow:hidden;}
+.jspace-canvas-wrap:active{cursor:grabbing;}
+.jspace-canvas-wrap canvas{display:block; width:100%; height:100%;}
+.jspace-hint{position:absolute; bottom:8px; left:10px; font-family:var(--font-mono); font-size:9.5px; color:var(--muted-2); pointer-events:none;}
+.jspace-legend{position:absolute; top:10px; right:12px; font-family:var(--font-mono); font-size:9.5px; color:var(--muted); display:flex; flex-direction:column; gap:4px; text-align:right; pointer-events:none;}
+.jspace-legend span{display:flex; align-items:center; gap:5px; justify-content:flex-end;}
+.dot{display:inline-block; width:7px; height:7px; border-radius:50%; flex:none;}
+
+.readout-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;}
+@media (max-width:640px){ .readout-grid{grid-template-columns:1fr;} }
+.readout-list{list-style:none; margin:0; padding:0; font-family:var(--font-mono); font-size:12px;}
+.readout-list li{display:flex; align-items:center; gap:9px; padding:4px 0; border-bottom:1px dashed var(--border);}
+.readout-list li .rank{color:var(--muted-2); width:16px; flex:none;}
+.readout-list li .bar-mini{height:4px; border-radius:2px; background:var(--blue); flex:none;}
+
+.coord-table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:11.5px;}
+.coord-table th{text-align:left; color:var(--muted-2); font-weight:500; font-size:10px; padding-bottom:6px; border-bottom:1px solid var(--border-strong);}
+.coord-table td{padding:5px 0; border-bottom:1px solid var(--border); vertical-align:middle;}
+.coord-name{color:var(--text); white-space:nowrap; padding-right:8px;}
+.coord-bar-bg{background:rgba(16,23,42,0.06); border-radius:2px; height:6px; width:90px; overflow:hidden; display:inline-block; vertical-align:middle;}
+.coord-bar{height:100%; border-radius:2px;}
+.coord-raw{padding-left:8px; color:var(--muted-2); text-align:right;}
+
+.traj-toggles{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px;}
+.chip{display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; padding:4px 9px; border-radius:12px; border:1px solid var(--border-strong); color:var(--muted); cursor:pointer; background:var(--panel-2);}
+.chip.on{color:var(--text); border-color:currentColor;}
+
+.hm-wrap{display:flex; gap:8px;}
+.hm-axis-y{display:flex; flex-direction:column; justify-content:space-between; font-family:var(--font-mono); font-size:9.5px; color:var(--muted-2); padding:4px 0; flex:none; width:26px; text-align:right;}
+.hm-canvas-col{flex:1; min-width:520px;}
+.hm-canvas-wrap{position:relative; border:1px solid var(--border); border-radius:6px; background:#fbfcff;}
+.hm-canvas-wrap canvas{display:block; width:100%; height:340px; cursor:crosshair;}
+.hm-axis-x{display:flex; font-family:var(--font-mono); font-size:9px; color:var(--muted-2); margin-top:5px;}
+.hm-axis-x span{flex:1; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.hm-tooltip{position:absolute; pointer-events:none; background:#10172a; border-radius:4px; padding:6px 9px; font-family:var(--font-mono); font-size:10.5px; color:#fff; z-index:10; white-space:nowrap; opacity:0; transition:opacity .1s;}
+
+.jshield-flow{display:flex; align-items:stretch; flex-wrap:wrap; border:1px solid var(--border); border-radius:6px; overflow:hidden;}
+.jshield-step{flex:1; min-width:140px; padding:14px; text-align:center; border-right:1px solid var(--border); background:var(--panel-2); display:flex; flex-direction:column; align-items:center; gap:6px; justify-content:center; position:relative;}
+.jshield-step:last-child{border-right:none;}
+.jshield-step .lbl{font-family:var(--font-mono); font-size:11.5px;}
+.jshield-step::after{content:'→'; position:absolute; right:-11px; top:50%; transform:translateY(-50%); color:var(--muted-2); z-index:2;}
+.jshield-step:last-child::after{content:'';}
+@media (max-width:900px){ .jshield-step{border-right:none; border-bottom:1px solid var(--border);} .jshield-step::after{content:'↓'; right:50%; top:auto; bottom:-13px; transform:translateX(50%);} }
+.feature-table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:11.5px; margin-top:10px;}
+.feature-table th{text-align:left; color:var(--muted-2); font-weight:500; font-size:10px; padding-bottom:6px; border-bottom:1px solid var(--border-strong);}
+.feature-table td{padding:7px 10px 7px 0; border-bottom:1px solid var(--border);}
+
+.steer-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+@media (max-width:760px){ .steer-grid{grid-template-columns:1fr;} }
+.steer-col{border:1px solid var(--border); border-radius:6px; padding:14px; background:var(--panel-2);}
+.steer-col h4{font-family:var(--font-mono); font-size:10.5px; margin:0 0 10px; color:var(--muted);}
+.cand-row{display:flex; align-items:center; gap:10px; margin-bottom:7px; font-family:var(--font-mono); font-size:12px;}
+.cand-tok{width:66px; flex:none;}
+.cand-bar-bg{flex:1; background:rgba(16,23,42,0.06); border-radius:2px; height:9px; overflow:hidden;}
+.cand-bar{height:100%; border-radius:2px;}
+.cand-p{width:42px; flex:none; text-align:right; color:var(--muted);}
+.gen-output{margin-top:12px; padding:12px 14px; border:1px solid var(--border-strong); border-radius:5px; background:#fff; font-family:var(--font-mono); font-size:13px; min-height:22px;}
+.equation-row{display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;}
+.equation-card{border:1px solid var(--border-strong); border-radius:5px; padding:12px 16px; background:var(--panel-2); flex:1; min-width:240px;}
+.equation-card .eq{font-family:var(--font-mono); font-size:14px;}
+.equation-card .note{font-size:11px; color:var(--muted); margin-top:8px; line-height:1.55;}
+
+.legend-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:18px;}
+.legend-item dt{font-family:var(--font-mono); font-size:11.5px; color:var(--blue); margin-bottom:5px;}
+.legend-item dd{margin:0; font-size:12.5px; color:var(--muted); line-height:1.55;}
+
+footer{border-top:1px solid var(--border); padding:20px 0 40px; margin-top:6px;}
+.footer-note{font-family:var(--font-mono); font-size:11px; color:var(--muted); line-height:1.7; max-width:840px; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:var(--panel);}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner wrap">
+    <div class="brand">
+      <h1>J-Space Console <span style="font-weight:400; color:var(--muted); font-size:13px;">· live</span></h1>
+      <span class="sub">real activations from your local model</span>
+    </div>
+    <div class="model-stats" id="modelStats">
+      <span class="tag tag-off">no model loaded</span>
+    </div>
+  </div>
+</header>
+<div id="errorBanner"></div>
+
+<main class="wrap">
+
+  <!-- ===================== SETUP ===================== -->
+  <section class="section">
+    <div class="panel">
+      <div class="panel-title">MODEL SETUP</div>
+      <div class="field-row">
+        <div style="flex:2; min-width:260px;">
+          <label class="field-label">model path (local folder or HF repo id)</label>
+          <input type="text" id="modelPath" placeholder="/path/to/your/gemma-checkpoint">
+        </div>
+        <div>
+          <label class="field-label">device</label>
+          <select id="deviceSelect">
+            <option value="auto">auto</option>
+            <option value="cuda">cuda</option>
+            <option value="mps">mps (Apple Silicon)</option>
+            <option value="cpu">cpu</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">dtype</label>
+          <select id="dtypeSelect">
+            <option value="auto">auto</option>
+            <option value="bfloat16">bfloat16</option>
+            <option value="float16">float16</option>
+            <option value="float32">float32</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">final-norm override (optional)</label>
+          <input type="text" id="normPath" placeholder="e.g. model.norm">
+        </div>
+        <div>
+          <label class="field-label">GGUF filename (optional)</label>
+          <input type="text" id="ggufFile" placeholder="e.g. gemma-9b-it-Q4_K_M.gguf">
+        </div>
+      </div>
+      <button class="btn primary" id="loadBtn">Load model</button>
+      <div class="status-line" id="loadStatus">Not loaded yet. An 8B-parameter model needs real memory — see README for RAM/VRAM guidance.</div>
+      <div class="status-line">If your checkpoint is a <code>.gguf</code> file, set "model path" to the <b>folder</b> containing it and fill in the GGUF filename above.</div>
+    </div>
+  </section>
+
+  <!-- ===================== PROMPT ===================== -->
+  <section class="section">
+    <div class="panel">
+      <div class="panel-title">01 · INPUT / TOKEN STREAM <span class="tag tag-live">live tokenization</span></div>
+      <textarea id="promptInput" placeholder="Enter a prompt…"></textarea>
+      <div style="margin-top:10px;">
+        <button class="btn primary" id="analyzeBtn" disabled>Analyze</button>
+        <span class="status-line" id="analyzeStatus" style="margin-top:0; margin-left:10px;"></span>
+      </div>
+      <div class="token-row" id="tokenRow" style="margin-top:14px;"></div>
+    </div>
+  </section>
+
+  <!-- ===================== CONTROLS ===================== -->
+  <div class="controls">
+    <div class="controls-inner wrap">
+      <div class="ctrl-group">
+        <span class="ctrl-label">LAYER</span>
+        <input type="range" id="layerSlider" min="0" max="41" value="0" disabled>
+        <span class="ctrl-value mono" id="layerValue">–</span>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">TOKEN</span>
+        <span class="ctrl-value mono" id="tokenValue">–</span>
+      </div>
+      <div class="ctrl-group">
+        <button class="btn" id="playBtn" disabled>▶ sweep layers</button>
+        <button class="btn" id="resetViewBtn" disabled>reset view</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== HERO ===================== -->
+  <section class="section hero-grid" style="margin-top:20px;">
+    <div class="panel">
+      <div class="panel-title">PIPELINE</div>
+      <div style="font-family:var(--font-mono); font-size:10.5px; color:var(--muted); line-height:2;">
+        USER INPUT<br>↓ TOKEN EMBEDDINGS<br>↓ TRANSFORMER LAYERS<br>↓ RESIDUAL STREAM (real hidden_states)<br>↓ LOGIT-LENS READOUT<br>↓ J-SPACE (tracked concept directions)
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:14px; line-height:1.6;">
+        This reads <code>output_hidden_states</code> from one real forward pass through your loaded model. Nothing here is precomputed or faked.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">02 · J-SPACE <span class="tag tag-live">real unembedding geometry (PCA)</span></div>
+      <div class="jspace-canvas-wrap" id="jspaceWrap">
+        <canvas id="jspaceCanvas"></canvas>
+        <div class="jspace-legend">
+          <span><span class="dot" style="background:var(--task)"></span>task / context</span>
+          <span><span class="dot" style="background:var(--red)"></span>risk / injection</span>
+          <span><span class="dot" style="background:var(--teal)"></span>safety / guardrail</span>
+          <span><span class="dot" style="background:var(--violet)"></span>uncertainty</span>
+          <span><span class="dot" style="background:#c7cede"></span>background vocab (random sample)</span>
+        </div>
+        <div class="jspace-hint">drag to rotate</div>
+      </div>
+      <div class="readout-grid">
+        <div>
+          <div class="panel-title" style="margin-bottom:8px;">TOP-8 READOUT — LAYER <span id="readoutLayer" class="mono" style="color:var(--text)">–</span> <span class="tag tag-live">full-vocab logit lens</span></div>
+          <ol class="readout-list" id="readoutList" style="padding-left:0;"></ol>
+        </div>
+        <div>
+          <div class="panel-title" style="margin-bottom:8px;">TRACKED CONCEPT COORDINATES</div>
+          <div class="scrollx"><table class="coord-table"><thead><tr><th>concept</th><th>relative strength</th><th>raw logit</th></tr></thead><tbody id="coordBody"></tbody></table></div>
+          <p style="font-size:10px; color:var(--muted-2); margin-top:8px; line-height:1.6;">"Relative strength" min–max normalizes the tracked concepts' raw logits at this position — it is not a full model probability.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">03 · CONCEPT TRAJECTORY <span class="tag tag-live">real, rank-style normalized</span></div>
+      <div class="traj-toggles" id="trajToggles"></div>
+      <canvas id="trajCanvas" style="width:100%; height:230px; display:block;"></canvas>
+      <p style="font-size:10.5px; color:var(--muted-2); margin-top:10px; line-height:1.6;">Token position <b id="trajTokenLabel" class="mono">–</b>. Each trace is independently min–max normalized across layers so shapes are comparable.</p>
+    </div>
+  </section>
+
+  <!-- ===================== HEATMAP ===================== -->
+  <section class="section">
+    <div class="panel">
+      <div class="section-head"><h2>04 · LOGIT-LENS HEATMAP <span class="tag tag-live">real</span></h2></div>
+      <p class="section-desc">Layer (0→last) against token position for one tracked concept. Logit lens is known to be noisy in early/middle layers — see the disclaimer at the bottom of the page.</p>
+      <div class="field-row" id="heatmapConcepts" style="margin-bottom:6px;"></div>
+      <div class="hm-wrap">
+        <div class="hm-axis-y" id="hmAxisY"></div>
+        <div class="hm-canvas-col">
+          <div class="hm-canvas-wrap" id="hmCanvasWrap"><canvas id="hmCanvas"></canvas><div class="hm-tooltip" id="hmTooltip"></div></div>
+          <div class="hm-axis-x" id="hmAxisX"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== J-SHIELD ===================== -->
+  <section class="section">
+    <div class="panel">
+      <div class="section-head"><h2>05 · J-SHIELD DETECTION PANEL <span class="tag tag-approx">no real SAE — reuses logit-lens scores</span></h2></div>
+      <p class="section-desc">There is no trained sparse autoencoder in this project. This panel reuses the same real logit-lens concept scores as a stand-in for what a trained SAE-based detector might report.</p>
+      <div class="jshield-flow">
+        <div class="jshield-step"><span class="lbl">Residual Stream</span></div>
+        <div class="jshield-step"><span class="lbl">Concept Projection (logit lens)</span></div>
+        <div class="jshield-step"><span class="lbl">Threshold Check</span></div>
+        <div class="jshield-step"><span class="lbl">Safety Decision</span></div>
+        <div class="jshield-step"><span class="lbl">Latent Steering</span></div>
+        <div class="jshield-step"><span class="lbl">Continued Generation</span></div>
+      </div>
+      <div class="scrollx"><table class="feature-table"><thead><tr><th>tracked signal</th><th>current strength (this layer/token)</th></tr></thead><tbody id="jshieldBody"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ===================== STEERING ===================== -->
+  <section class="section">
+    <div class="panel">
+      <div class="section-head"><h2>06 · ACTIVATION STEERING <span class="tag tag-live">real contrastive-activation addition</span></h2></div>
+      <p class="section-desc">direction = (last-token hidden state of the "safe" exemplar) − (last-token hidden state of the "neutral" exemplar), unit-normalized, added back into the residual stream at generation time.</p>
+      <div class="field-row">
+        <div><label class="field-label">neutral exemplar</label><textarea id="neutralExemplar"></textarea></div>
+        <div><label class="field-label">safe exemplar</label><textarea id="safeExemplar"></textarea></div>
+      </div>
+      <div class="field-row">
+        <div style="max-width:220px;">
+          <label class="field-label">steering layer</label>
+          <input type="range" id="steerLayerSlider" min="0" max="41" value="20" disabled>
+          <span class="ctrl-value mono" id="steerLayerValue">–</span>
+        </div>
+        <div style="max-width:220px;">
+          <label class="field-label">alpha (α)</label>
+          <input type="range" id="alphaSlider" min="0" max="30" step="0.5" value="8" disabled>
+          <span class="ctrl-value mono" id="alphaValue">8.0</span>
+        </div>
+      </div>
+      <button class="btn" id="computeSteerBtn" disabled>Compute steering vector</button>
+      <span class="status-line" id="steerStatus" style="margin-top:0; margin-left:10px;"></span>
+
+      <div class="steer-grid" style="margin-top:16px;">
+        <div class="steer-col">
+          <h4>WITHOUT STEERING</h4>
+          <button class="btn" id="genBaseBtn" disabled>Generate</button>
+          <div id="candBefore" style="margin-top:10px;"></div>
+          <div class="gen-output" id="outBefore">—</div>
+        </div>
+        <div class="steer-col">
+          <h4>WITH STEERING</h4>
+          <button class="btn" id="genSteerBtn" disabled>Generate</button>
+          <div id="candAfter" style="margin-top:10px;"></div>
+          <div class="gen-output" id="outAfter">—</div>
+        </div>
+      </div>
+
+      <div class="equation-row">
+        <div class="equation-card"><div class="eq mono">h_new&nbsp;=&nbsp;h&nbsp;+&nbsp;<span style="color:var(--blue)">α</span>&nbsp;<span style="color:var(--violet)">v_safety</span></div>
+          <div class="note">A single real direction is added at the chosen layer during generation.</div></div>
+        <div class="equation-card"><div class="eq mono">typical ‖h‖ at this layer ≈ <span id="hiddenNormRef" style="color:var(--blue)">–</span></div>
+          <div class="note">Use this to calibrate α — steering vectors are unit-normalized, so α should be a meaningful fraction of the residual stream's typical norm.</div></div>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:12px;">This is a real intervention on your model, not a guarantee of safety and not a claim of literally reading its "mind." Effects are empirical and can fail or have side effects on unrelated behavior.</p>
+    </div>
+  </section>
+
+  <!-- ===================== LEGEND ===================== -->
+  <section class="section">
+    <div class="panel">
+      <div class="section-head"><h2 style="font-size:13px;">TERMS</h2></div>
+      <dl class="legend-grid">
+        <div class="legend-item"><dt>Residual Stream</dt><dd>The real hidden state carried and updated across your model's transformer layers (<code>output_hidden_states</code>).</dd></div>
+        <div class="legend-item"><dt>Logit Lens</dt><dd>Unembedding an intermediate layer's residual stream through the model's own final norm + output projection, to read off what it currently "looks like" it's about to say.</dd></div>
+        <div class="legend-item"><dt>Concept score</dt><dd>The logit the model's real unembedding matrix assigns to a tracked word, at a given layer and token position.</dd></div>
+        <div class="legend-item"><dt>J-Shield panel</dt><dd>Reuses the same real concept scores — no SAE is trained in this project.</dd></div>
+        <div class="legend-item"><dt>Steering Vector</dt><dd>A real contrastive-activation direction, added to the residual stream during generation.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <div class="footer-note">
+    This tool runs real forward passes and generation against the model you load locally. It uses <b>logit lens</b> (a simple, well-known unembedding technique) as a stand-in for the more sophisticated, corpus-averaged <b>Jacobian lens</b> described in the Anthropic research on verbalizable / global-workspace-like representations that inspired this project — logit lens can be noisy, especially in early and middle layers. Steering uses a simple contrastive-activation-addition direction, not a trained latent guardrail. There is no SAE trained anywhere in this project.
+  </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ======================= STATE ======================= */
+let modelInfo = null;
+let analysis = null; // {tokens, num_layers, concepts, concept_grid, layout}
+const ui = { layer:0, token:0, heatmapConcept:null, trajVisible:{}, jspaceTheta:0.4, playing:false, playTimer:null, steerReady:false };
+
+const CAT_COLOR = { task:{hex:'#3d5a80', rgb:[61,90,128]}, risk:{hex:'#e0294b', rgb:[224,41,75]}, safety:{hex:'#0891b2', rgb:[8,145,178]}, unc:{hex:'#7c5cff', rgb:[124,92,255]} };
+const TRAJ_DEFAULT_IDS = ['injection','security','intent','refuse','safe'];
+const HEATMAP_DEFAULT_IDS = ['injection','ignore','system','security','reasoning','safe'];
+
+function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+function lerpColor(c1,c2,t){ return [Math.round(c1[0]+(c2[0]-c1[0])*t), Math.round(c1[1]+(c2[1]-c1[1])*t), Math.round(c1[2]+(c2[2]-c1[2])*t)]; }
+
+/* ======================= ERROR BANNER ======================= */
+const errBanner = document.getElementById('errorBanner');
+function showError(msg){
+  errBanner.innerHTML = 'Error: ' + msg + ' <button id="errDismiss">dismiss</button>';
+  errBanner.style.display = 'block';
+  document.getElementById('errDismiss').onclick = ()=>{ errBanner.style.display='none'; };
+}
+async function apiPost(url, body){
+  const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{})});
+  const data = await res.json();
+  if(!res.ok || data.error){ throw new Error(data.error || res.statusText); }
+  return data;
+}
+async function apiGet(url){
+  const res = await fetch(url);
+  const data = await res.json();
+  if(!res.ok || data.error){ throw new Error(data.error || res.statusText); }
+  return data;
+}
+
+/* ======================= SETUP: DEFAULTS ======================= */
+(async function initDefaults(){
+  try{
+    const d = await apiGet('/api/defaults');
+    document.getElementById('promptInput').value = d.prompt;
+    document.getElementById('neutralExemplar').value = d.neutral_exemplar;
+    document.getElementById('safeExemplar').value = d.safe_exemplar;
+  }catch(e){ showError('could not reach the server: '+e.message); }
+})();
+
+/* ======================= MODEL LOAD ======================= */
+document.getElementById('loadBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('loadBtn');
+  const status = document.getElementById('loadStatus');
+  const modelPath = document.getElementById('modelPath').value.trim();
+  if(!modelPath){ showError('enter a model path first'); return; }
+  btn.disabled = true;
+  status.className = 'status-line';
+  status.textContent = 'Loading model — this can take a while for an 8B-parameter checkpoint…';
+  try{
+    const info = await apiPost('/api/load_model', {
+      model_path: modelPath,
+      device: document.getElementById('deviceSelect').value,
+      dtype: document.getElementById('dtypeSelect').value,
+      norm_path: document.getElementById('normPath').value.trim() || null,
+      gguf_file: document.getElementById('ggufFile').value.trim() || null
+    });
+    modelInfo = info;
+    status.className = 'status-line ok';
+    status.textContent = 'Loaded ' + info.model_name + ' on ' + info.device + ' (' + info.dtype + ').' +
+      (info.is_multimodal ? ' Detected a multimodal (image-text-to-text) checkpoint — loaded via AutoModelForImageTextToText, running text-only forward passes.' : '');
+    document.getElementById('modelStats').innerHTML =
+      '<span class="tag tag-live">loaded</span>' +
+      '<span class="mono">layers <b>'+info.num_layers+'</b></span>' +
+      '<span class="mono">hidden <b>'+info.hidden_size+'</b></span>' +
+      '<span class="mono">vocab <b>'+info.vocab_size.toLocaleString()+'</b></span>' +
+      '<span class="mono">'+info.device+' / '+info.dtype+'</span>';
+    document.getElementById('analyzeBtn').disabled = false;
+    ['layerSlider','steerLayerSlider'].forEach(id=>{
+      const el = document.getElementById(id);
+      el.max = info.num_layers-1;
+      el.disabled = false;
+    });
+    document.getElementById('alphaSlider').disabled = false;
+    document.getElementById('computeSteerBtn').disabled = false;
+    document.getElementById('steerLayerSlider').value = Math.floor(info.num_layers/2);
+    document.getElementById('steerLayerValue').textContent = document.getElementById('steerLayerSlider').value;
+  }catch(e){
+    status.className = 'status-line err';
+    status.textContent = 'Failed to load: ' + e.message;
+    showError(e.message);
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+/* ======================= ANALYZE ======================= */
+document.getElementById('analyzeBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('analyzeBtn');
+  const status = document.getElementById('analyzeStatus');
+  const prompt = document.getElementById('promptInput').value;
+  btn.disabled = true;
+  status.textContent = 'Running forward pass…';
+  try{
+    const data = await apiPost('/api/analyze', {prompt});
+    analysis = data;
+    status.textContent = data.tokens.length + ' tokens · ' + data.num_layers + ' layers analyzed.';
+    ui.layer = Math.floor(data.num_layers/2);
+    ui.token = Math.min(9, data.tokens.length-1);
+    ui.heatmapConcept = ui.heatmapConcept || pickFirstAvailable(HEATMAP_DEFAULT_IDS, data.concepts);
+    TRAJ_DEFAULT_IDS.forEach(id=>{ if(findConcept(id)) ui.trajVisible[id] = ui.trajVisible[id] !== false; });
+
+    buildTokenRow();
+    buildHeatmapConceptPicker();
+    buildTrajToggles();
+    document.getElementById('layerSlider').disabled = false;
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('resetViewBtn').disabled = false;
+    document.getElementById('layerSlider').max = data.num_layers-1;
+    document.getElementById('layerSlider').value = ui.layer;
+    syncUI();
+  }catch(e){
+    status.textContent = 'Failed: ' + e.message;
+    showError(e.message);
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+function findConcept(id){ return analysis ? analysis.concepts.find(c=>c.id===id) : null; }
+function conceptIndex(id){ return analysis ? analysis.concepts.findIndex(c=>c.id===id) : -1; }
+function pickFirstAvailable(ids, concepts){ for(const id of ids){ if(concepts.find(c=>c.id===id)) return id; } return concepts[0].id; }
+
+/* ======================= TOKEN ROW ======================= */
+function buildTokenRow(){
+  const row = document.getElementById('tokenRow');
+  row.innerHTML = '';
+  analysis.tokens.forEach((t,i)=>{
+    const el = document.createElement('div');
+    el.className = 'token-cell';
+    el.textContent = t || '·';
+    el.addEventListener('click', ()=>{ ui.token = i; syncUI(); });
+    row.appendChild(el);
+  });
+}
+
+/* ======================= CONCEPT PICKERS ======================= */
+function buildHeatmapConceptPicker(){
+  const wrap = document.getElementById('heatmapConcepts');
+  wrap.innerHTML = '';
+  analysis.concepts.forEach(c=>{
+    const b = document.createElement('button');
+    b.className = 'btn' + (c.id===ui.heatmapConcept ? ' primary' : '');
+    b.textContent = c.label;
+    b.style.fontSize = '10.5px';
+    b.addEventListener('click', ()=>{ ui.heatmapConcept = c.id; buildHeatmapConceptPicker(); renderHeatmap(); });
+    wrap.appendChild(b);
+  });
+}
+function buildTrajToggles(){
+  const wrap = document.getElementById('trajToggles');
+  wrap.innerHTML = '';
+  analysis.concepts.forEach(c=>{
+    if(ui.trajVisible[c.id]===undefined) ui.trajVisible[c.id] = TRAJ_DEFAULT_IDS.includes(c.id);
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (ui.trajVisible[c.id] ? ' on':'');
+    chip.style.color = CAT_COLOR[c.cat].hex;
+    chip.innerHTML = '<span class="dot" style="background:'+CAT_COLOR[c.cat].hex+'"></span>'+c.label;
+    chip.addEventListener('click', ()=>{ ui.trajVisible[c.id] = !ui.trajVisible[c.id]; chip.classList.toggle('on', ui.trajVisible[c.id]); renderTrajectory(); });
+    wrap.appendChild(chip);
+  });
+}
+
+/* ======================= NORMALIZATION HELPERS ======================= */
+function positionValues(layer, token){
+  // raw logits + min-max normalized 0..1 across the tracked concepts at ONE position
+  const row = analysis.concept_grid[layer][token];
+  const mn = Math.min(...row), mx = Math.max(...row);
+  const span = (mx-mn) || 1e-6;
+  return row.map(v=>({raw:v, norm: clamp((v-mn)/span,0,1)}));
+}
+function conceptTraceMinMax(ci){
+  let mn=Infinity, mx=-Infinity;
+  for(let l=0;l<analysis.num_layers;l++){
+    const v = analysis.concept_grid[l][ui.token][ci];
+    if(v<mn) mn=v; if(v>mx) mx=v;
+  }
+  return {mn,mx};
+}
+function heatmapConceptMinMax(ci){
+  let mn=Infinity, mx=-Infinity;
+  for(let l=0;l<analysis.num_layers;l++){
+    for(let t=0;t<analysis.tokens.length;t++){
+      const v = analysis.concept_grid[l][t][ci];
+      if(v<mn) mn=v; if(v>mx) mx=v;
+    }
+  }
+  return {mn,mx};
+}
+
+/* ======================= CANVAS SETUP ======================= */
+function setupCanvas(canvas){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(rect.width, 200), h = Math.max(rect.height, 120);
+  canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx,w,h};
+}
+const jspaceCanvas = document.getElementById('jspaceCanvas');
+const hmCanvas = document.getElementById('hmCanvas');
+const trajCanvas = document.getElementById('trajCanvas');
+
+/* ======================= J-SPACE ======================= */
+function project(p, theta, w, h){
+  const cos=Math.cos(theta), sin=Math.sin(theta);
+  const x = p[0]*cos - p[2]*sin, z = p[0]*sin + p[2]*cos, y = p[1];
+  const focal = 2.3, scale = focal/(focal+z+1.4);
+  return {x: w/2 + x*scale*(w*0.36), y: h/2 - y*scale*(h*0.36), scale, z};
+}
+function renderJSpace(){
+  const {ctx,w,h} = setupCanvas(jspaceCanvas);
+  ctx.clearRect(0,0,w,h);
+  if(!analysis){ return; }
+
+  const bg = analysis.layout.background.map(p=>({p,s:project(p, ui.jspaceTheta, w, h)}));
+  bg.sort((a,b)=>a.s.z-b.s.z);
+  bg.forEach(({s})=>{
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(120,135,170,'+clamp(0.12+s.scale*0.16,0.05,0.3)+')';
+    ctx.arc(s.x,s.y,1.1*s.scale+0.4,0,Math.PI*2); ctx.fill();
+  });
+
+  const vals = positionValues(ui.layer, ui.token);
+  const nodeProj = analysis.concepts.map((c,i)=>({c,i,act:vals[i].norm, s:project(analysis.layout.concepts[i], ui.jspaceTheta, w, h)}));
+  nodeProj.sort((a,b)=>a.s.z-b.s.z);
+  nodeProj.forEach(({c,act,s})=>{
+    const col = CAT_COLOR[c.cat].rgb;
+    const r = (2.6+act*8.5)*clamp(s.scale,0.5,1.3);
+    const alpha = clamp(0.18+act*0.82,0.12,1);
+    ctx.save();
+    if(act>0.35){ ctx.shadowBlur = 5+act*14; ctx.shadowColor = 'rgba('+col[0]+','+col[1]+','+col[2]+','+clamp(act,0.2,0.85)+')'; }
+    ctx.beginPath(); ctx.fillStyle = 'rgba('+col[0]+','+col[1]+','+col[2]+','+alpha+')';
+    ctx.arc(s.x,s.y,r,0,Math.PI*2); ctx.fill(); ctx.restore();
+    if(act>0.32){
+      ctx.font='10.5px "IBM Plex Mono", monospace';
+      ctx.fillStyle = 'rgba(16,23,42,'+clamp(act,0.4,0.95)+')';
+      ctx.fillText(c.label, s.x+r+4, s.y+3);
+    }
+  });
+}
+(function(){
+  const wrap = document.getElementById('jspaceWrap');
+  let dragging=false, lastX=0;
+  wrap.addEventListener('mousedown', e=>{ dragging=true; lastX=e.clientX; });
+  window.addEventListener('mousemove', e=>{ if(!dragging) return; ui.jspaceTheta += (e.clientX-lastX)*0.008; lastX=e.clientX; renderJSpace(); });
+  window.addEventListener('mouseup', ()=>{ dragging=false; });
+  wrap.addEventListener('touchstart', e=>{ dragging=true; lastX=e.touches[0].clientX; }, {passive:true});
+  wrap.addEventListener('touchmove', e=>{ if(!dragging) return; ui.jspaceTheta += (e.touches[0].clientX-lastX)*0.008; lastX=e.touches[0].clientX; renderJSpace(); }, {passive:true});
+  wrap.addEventListener('touchend', ()=>{ dragging=false; });
+})();
+
+/* ======================= HEATMAP ======================= */
+function heatColor(cat, v){
+  const bg=[251,252,255], col=CAT_COLOR[cat].rgb;
+  const rgb = lerpColor(bg,col,Math.pow(clamp(v,0,1),0.75));
+  return 'rgb('+rgb[0]+','+rgb[1]+','+rgb[2]+')';
+}
+function renderHeatmap(){
+  if(!analysis) return;
+  const {ctx,w,h} = setupCanvas(hmCanvas);
+  ctx.clearRect(0,0,w,h);
+  const ci = conceptIndex(ui.heatmapConcept);
+  if(ci<0) return;
+  const cat = analysis.concepts[ci].cat;
+  const range = heatmapConceptMinMax(ci);
+  const L = analysis.num_layers, N = analysis.tokens.length;
+  const cellW = w/N, cellH = h/L;
+  const span = (range.mx-range.mn)||1e-6;
+  for(let layer=0; layer<L; layer++){
+    const rowY = h-(layer+1)*cellH;
+    for(let tok=0; tok<N; tok++){
+      const v = clamp((analysis.concept_grid[layer][tok][ci]-range.mn)/span,0,1);
+      ctx.fillStyle = heatColor(cat, v);
+      ctx.fillRect(tok*cellW, rowY, cellW+0.5, cellH+0.5);
+    }
+  }
+  const selX = ui.token*cellW, selY = h-(ui.layer+1)*cellH;
+  ctx.strokeStyle = '#10172a'; ctx.lineWidth=1.4;
+  ctx.strokeRect(selX+0.5, selY+0.5, cellW-1, cellH-1);
+
+  // axis labels
+  const axisY = document.getElementById('hmAxisY'); axisY.innerHTML='';
+  const step = Math.max(1, Math.round(L/8));
+  for(let l=L-1; l>=0; l-=step){ const s=document.createElement('span'); s.textContent=l; axisY.appendChild(s); }
+  const axisX = document.getElementById('hmAxisX'); axisX.innerHTML='';
+  analysis.tokens.forEach(t=>{ const s=document.createElement('span'); s.textContent=(t.length>6? t.slice(0,5)+'…':t)||'·'; axisX.appendChild(s); });
+}
+(function(){
+  const wrap = document.getElementById('hmCanvasWrap');
+  const tooltip = document.getElementById('hmTooltip');
+  function handle(clientX, clientY, click){
+    if(!analysis) return;
+    const rect = hmCanvas.getBoundingClientRect();
+    const x = clientX-rect.left, y = clientY-rect.top;
+    if(x<0||y<0||x>rect.width||y>rect.height){ tooltip.style.opacity=0; return; }
+    const N = analysis.tokens.length, L = analysis.num_layers;
+    const tok = clamp(Math.floor(x/(rect.width/N)),0,N-1);
+    const layer = L-1-clamp(Math.floor(y/(rect.height/L)),0,L-1);
+    const ci = conceptIndex(ui.heatmapConcept);
+    const v = analysis.concept_grid[layer][tok][ci];
+    tooltip.style.left=(x+14)+'px'; tooltip.style.top=(y+10)+'px'; tooltip.style.opacity=1;
+    tooltip.textContent = 'layer '+layer+' · "'+analysis.tokens[tok]+'" · logit '+v.toFixed(2);
+    if(click){ ui.layer=layer; ui.token=tok; syncUI(); }
+  }
+  wrap.addEventListener('mousemove', e=>handle(e.clientX,e.clientY,false));
+  wrap.addEventListener('mouseleave', ()=>{ tooltip.style.opacity=0; });
+  wrap.addEventListener('click', e=>handle(e.clientX,e.clientY,true));
+})();
+
+/* ======================= TRAJECTORY ======================= */
+function renderTrajectory(){
+  if(!analysis) return;
+  const {ctx,w,h} = setupCanvas(trajCanvas);
+  ctx.clearRect(0,0,w,h);
+  const padL=8,padR=8,padT=10,padB=18, plotW=w-padL-padR, plotH=h-padT-padB;
+  ctx.strokeStyle='rgba(16,23,42,0.07)'; ctx.lineWidth=1;
+  [0,0.25,0.5,0.75,1].forEach(f=>{ const y=padT+plotH*(1-f); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke(); });
+
+  document.getElementById('trajTokenLabel').textContent = '"'+(analysis.tokens[ui.token]||'')+'" (idx '+ui.token+')';
+
+  analysis.concepts.forEach((c,ci)=>{
+    if(!ui.trajVisible[c.id]) return;
+    const range = conceptTraceMinMax(ci);
+    const span = (range.mx-range.mn)||1e-6;
+    ctx.beginPath(); ctx.strokeStyle = CAT_COLOR[c.cat].hex; ctx.lineWidth=1.6;
+    for(let l=0;l<analysis.num_layers;l++){
+      const v = clamp((analysis.concept_grid[l][ui.token][ci]-range.mn)/span,0,1);
+      const x = padL+(l/(analysis.num_layers-1))*plotW, y = padT+plotH*(1-v);
+      if(l===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  });
+
+  const mx = padL+(ui.layer/(analysis.num_layers-1))*plotW;
+  ctx.strokeStyle='rgba(16,23,42,0.45)'; ctx.setLineDash([2,3]);
+  ctx.beginPath(); ctx.moveTo(mx,padT); ctx.lineTo(mx,h-padB); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(91,100,120,0.9)'; ctx.font='9px "IBM Plex Mono", monospace';
+  ctx.fillText('L0', padL, h-4); ctx.fillText('L'+(analysis.num_layers-1), w-padR-22, h-4);
+}
+
+/* ======================= READOUT (on-demand real fetch) ======================= */
+let readoutDebounce=null;
+function scheduleReadout(){
+  clearTimeout(readoutDebounce);
+  readoutDebounce = setTimeout(fetchReadout, 140);
+}
+async function fetchReadout(){
+  if(!analysis) return;
+  document.getElementById('readoutLayer').textContent = ui.layer;
+  try{
+    const data = await apiPost('/api/readout', {layer:ui.layer, token:ui.token});
+    const list = document.getElementById('readoutList');
+    list.innerHTML='';
+    data.top.forEach((item,rank)=>{
+      const li=document.createElement('li');
+      const barW = Math.round(item.prob*160);
+      li.innerHTML = '<span class="rank">'+(rank+1)+'.</span><span>'+item.token+'</span><span class="bar-mini" style="width:'+barW+'px; margin-left:auto;"></span><span class="mono" style="color:var(--muted-2); font-size:10.5px;">'+(item.prob*100).toFixed(1)+'%</span>';
+      list.appendChild(li);
+    });
+  }catch(e){ /* non-fatal, avoid spamming the banner during slider drag */ console.warn(e); }
+}
+
+/* ======================= COORDINATE TABLE + J-SHIELD ======================= */
+function renderCoordTable(){
+  if(!analysis) return;
+  const vals = positionValues(ui.layer, ui.token);
+  const rows = analysis.concepts.map((c,i)=>({c, ...vals[i]})).sort((a,b)=>b.norm-a.norm);
+  const body = document.getElementById('coordBody');
+  body.innerHTML='';
+  rows.slice(0,10).forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = '<td class="coord-name">'+r.c.label+'</td>' +
+      '<td><span class="coord-bar-bg"><span class="coord-bar" style="width:'+Math.round(r.norm*100)+'%; background:'+CAT_COLOR[r.c.cat].hex+'"></span></span></td>' +
+      '<td class="coord-raw">'+r.raw.toFixed(2)+'</td>';
+    body.appendChild(tr);
+  });
+
+  const jshieldBody = document.getElementById('jshieldBody');
+  jshieldBody.innerHTML='';
+  ['injection','ignore','system'].forEach(id=>{
+    const c = findConcept(id); if(!c) return;
+    const ci = conceptIndex(id);
+    const v = analysis.concept_grid[ui.layer][ui.token][ci];
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>"'+c.label+'"</td><td class="mono">'+v.toFixed(2)+'</td>';
+    jshieldBody.appendChild(tr);
+  });
+}
+
+/* ======================= SYNC ======================= */
+function syncUI(){
+  if(!analysis) return;
+  document.getElementById('layerSlider').value = ui.layer;
+  document.getElementById('layerValue').textContent = ui.layer;
+  document.getElementById('tokenValue').textContent = analysis.tokens[ui.token] || '';
+  Array.from(document.getElementById('tokenRow').children).forEach((el,i)=>el.classList.toggle('selected', i===ui.token));
+  renderJSpace(); renderHeatmap(); renderTrajectory(); renderCoordTable(); scheduleReadout();
+}
+
+document.getElementById('layerSlider').addEventListener('input', e=>{ ui.layer = parseInt(e.target.value,10); syncUI(); });
+
+const playBtn = document.getElementById('playBtn');
+playBtn.addEventListener('click', ()=>{
+  ui.playing = !ui.playing;
+  playBtn.classList.toggle('primary', ui.playing);
+  playBtn.textContent = ui.playing ? '⏸ sweeping…' : '▶ sweep layers';
+  if(ui.playing){
+    if(ui.layer >= analysis.num_layers-1) ui.layer = 0;
+    ui.playTimer = setInterval(()=>{
+      let next = ui.layer+1;
+      if(next > analysis.num_layers-1){ clearInterval(ui.playTimer); ui.playing=false; playBtn.classList.remove('primary'); playBtn.textContent='▶ sweep layers'; return; }
+      ui.layer = next; syncUI();
+    }, 500);
+  } else { clearInterval(ui.playTimer); }
+});
+document.getElementById('resetViewBtn').addEventListener('click', ()=>{ ui.jspaceTheta = 0.4; renderJSpace(); });
+
+/* ======================= STEERING ======================= */
+document.getElementById('steerLayerSlider').addEventListener('input', e=>{ document.getElementById('steerLayerValue').textContent = e.target.value; });
+document.getElementById('alphaSlider').addEventListener('input', e=>{ document.getElementById('alphaValue').textContent = parseFloat(e.target.value).toFixed(1); });
+
+document.getElementById('computeSteerBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('steerStatus');
+  status.className='status-line'; status.textContent='Computing direction…';
+  try{
+    const data = await apiPost('/api/steering_vector', {
+      neutral_exemplar: document.getElementById('neutralExemplar').value,
+      safe_exemplar: document.getElementById('safeExemplar').value,
+      layer: parseInt(document.getElementById('steerLayerSlider').value,10)
+    });
+    ui.steerReady = true;
+    status.className='status-line ok';
+    status.textContent = 'Steering vector ready at layer '+data.layer+'.';
+    if(data.hidden_norm && data.hidden_norm.mean){
+      document.getElementById('hiddenNormRef').textContent = data.hidden_norm.mean.toFixed(1);
+    }
+    document.getElementById('genBaseBtn').disabled = false;
+    document.getElementById('genSteerBtn').disabled = false;
+  }catch(e){
+    status.className='status-line err'; status.textContent='Failed: '+e.message; showError(e.message);
+  }
+});
+
+function renderCandidates(containerId, cands, color){
+  const el = document.getElementById(containerId);
+  el.innerHTML='';
+  cands.forEach(c=>{
+    const row=document.createElement('div'); row.className='cand-row';
+    row.innerHTML = '<span class="cand-tok">'+c.token+'</span><span class="cand-bar-bg"><span class="cand-bar" style="width:'+Math.round(c.prob*100)+'%; background:'+color+'"></span></span><span class="cand-p">'+(c.prob*100).toFixed(1)+'%</span>';
+    el.appendChild(row);
+  });
+}
+
+document.getElementById('genBaseBtn').addEventListener('click', ()=>runGenerate(false));
+document.getElementById('genSteerBtn').addEventListener('click', ()=>runGenerate(true));
+
+async function runGenerate(steer){
+  const btn = document.getElementById(steer?'genSteerBtn':'genBaseBtn');
+  const outEl = document.getElementById(steer?'outAfter':'outBefore');
+  const candId = steer?'candAfter':'candBefore';
+  btn.disabled = true; outEl.textContent = 'Generating…';
+  try{
+    const data = await apiPost('/api/generate', {
+      prompt: document.getElementById('promptInput').value,
+      steer: steer,
+      alpha: parseFloat(document.getElementById('alphaSlider').value),
+      max_new_tokens: 40
+    });
+    outEl.textContent = data.text || '(empty)';
+    renderCandidates(candId, data.candidates, steer ? '#0891b2' : '#e0294b');
+  }catch(e){
+    outEl.textContent = 'Failed: '+e.message; showError(e.message);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+let resizeTimer;
+window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer=setTimeout(()=>{ if(analysis){ renderJSpace(); renderHeatmap(); renderTrajectory(); } }, 120); });
+
+})();
+</script>
+</body>
+</html>

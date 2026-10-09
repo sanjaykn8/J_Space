@@ -1,0 +1,12 @@
+flask>=3.0
+torch>=2.2
+transformers>=4.44
+accelerate>=0.30
+scikit-learn>=1.3
+numpy>=1.24
+sentencepiece>=0.2
+protobuf>=4.25
+gguf>=0.10
+
+# Optional, only if you need 4-bit/8-bit loading for a lower-VRAM GPU:
+# bitsandbytes>=0.43
